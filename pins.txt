@@ -1,0 +1,84 @@
+================================================================================
+ESP32 NS200 BS4 Smart Watch/Phone Keyless Ignition, Immobilizer & Strobe
+Target Motorcycle: Bajaj Pulsar NS 200 BS4
+Target Board     : ESP32 Dev Module
+================================================================================
+
+--------------------------------------------------------------------------------
+ANTI-THEFT IMMOBILIZER LOGIC (LOCK & UNLOCK)
+--------------------------------------------------------------------------------
+1. LOCK Immobilizer (10s Long Press):
+   - Press and hold the Pass Switch continuously for 10 seconds to LOCK the immobilizer.
+   - The Engine Cut-Off relay becomes ACTIVE immediately, killing the engine/CDI spark.
+   - The lock status is stored in non-volatile flash memory (NVS Preferences).
+
+2. UNLOCK Immobilizer (3 Clicks):
+   - Turn on the ignition (via Physical Key or Keyless trigger) and press the Pass Switch 3 times within 4 seconds to UNLOCK.
+   - The Engine Cut-Off relay returns to INACTIVE, allowing the engine to start.
+
+3. Keyless Ignition while Immobilizer is Locked:
+   - If the bike is locked and you trigger the Hidden Switch, your authorized Watch/Phone is authenticated.
+   - Ignition Relay (GPIO 14) turns ON (Speedometer turns on, ESP32 powers up).
+   - However, Engine Cut-Off remains ACTIVE, preventing the starter from cranking or firing the engine.
+   - You MUST press the Pass Switch 3 times to unlock the engine before starting!
+
+--------------------------------------------------------------------------------
+OUTPUT PINS (Relays & Indicators)
+--------------------------------------------------------------------------------
+1. GPIO 14 : PIN_IGNITION_RELAY (Keyless Ignition Main Relay)
+   - Description : Controls main bike ignition power (equivalent to turning physical key).
+   - Operation   :
+     (a) Triggered ONLY when GPIO 27 detects GND pulse from the Hidden Switch.
+         Wi-Fi turns ON, searches for registered Samsung Watch / Android / iPhone MACs.
+         Once authenticated, Ignition Relay latches ON.
+     (b) When parked with Side Stand DOWN for >= 10 seconds:
+         - System checks specifically for the SAMSUNG WATCH connection.
+         - If Samsung Watch is still connected -> Ignition stays ON (keep-alive).
+         - If Samsung Watch disconnects (or Wi-Fi turned off on watch) -> Ignition cuts OFF immediately.
+         - If only a Phone is connected (No Watch) -> Auto shuts OFF after 10 seconds on side stand.
+   - Polarity    : HIGH = Ignition ON, LOW = Ignition OFF
+
+2. GPIO 13 : PIN_ENGINE_CUTOFF
+   - Description : Controls Engine Kill Switch / CDI Grounding Relay.
+   - Operation   : Cuts engine if bike is in gear with side stand down, or if Immobilizer is locked.
+   - Polarity    : HIGH = Active / Engine Cut Off, LOW = Inactive / Engine Run Allowed
+
+3. GPIO 12 : PIN_PASS_RELAY
+   - Description : Controls Pass Light / High Beam MOSFET or Relay.
+   - Operation   : Normal steady high beam or 15 Hz Tactical Flicker Strobe.
+   - Polarity    : HIGH = Light ON, LOW = Light OFF
+
+4. GPIO 2  : PIN_STATUS_LED
+   - Description : ESP32 On-board Built-in Blue LED (mirrors pass light / system activity).
+   - Polarity    : HIGH = LED ON, LOW = LED OFF
+
+--------------------------------------------------------------------------------
+INPUT PINS (Switches & Sensors)
+--------------------------------------------------------------------------------
+1. GPIO 27 : PIN_KEYLESS_TRIG (Hidden Switch Trigger - Active LOW / Triggered to GND)
+   - Senses trigger from the hidden momentary switch via PC817 Optocoupler (sinks to ESP32 GND).
+   - Uses ESP32 internal pullup (INPUT_PULLUP).
+
+2. GPIO 18 : PIN_NEUTRAL_SW (Neutral Gear Switch - Active LOW)
+   - Uses internal pullup (INPUT_PULLUP). LOW when bike is in Neutral gear.
+
+3. GPIO 19 : PIN_SIDESTAND_SW (Side Stand Switch - Active LOW)
+   - Uses internal pullup (INPUT_PULLUP). LOW when Side Stand is DOWN.
+   - Includes 700ms debounce buffer against road bump/pothole bounces while riding.
+
+4. GPIO 4  : PIN_PASS_SW (Pass Switch - Active LOW)
+   - Uses internal pullup (INPUT_PULLUP). LOW when Pass switch is pressed.
+   - Multi-Click & Long-Press Controls:
+     * 3 Clicks (within 4s)  : Unlock Anti-Theft Immobilizer.
+     * 5 Clicks (within 4s)  : Toggle between Steady Pass Mode and 15 Hz Tactical Flicker Mode.
+     * 10s Long Press        : Lock Anti-Theft Immobilizer.
+     * 10 Clicks (within 4s) : Automatically save currently connected Samsung Watch MAC into Flash (NVS).
+
+--------------------------------------------------------------------------------
+REGISTERED DEVICE MAC ADDRESSES
+--------------------------------------------------------------------------------
+1. Samsung Galaxy Watch : 0E:6B:D8:4C:2E:F2 (Controls side-stand keep-alive & walk-away auto shutoff)
+2. Android Phone        : 82:CA:BF:DC:14:F1 (Keyless Ignition authorization)
+3. iPhone (Real MAC)    : 60:57:C8:03:BB:3A (Keyless Ignition authorization)
+
+================================================================================
