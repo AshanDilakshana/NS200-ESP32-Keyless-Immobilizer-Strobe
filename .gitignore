@@ -1,0 +1,16 @@
+# Arduino build output
+*.bin
+*.hex
+*.elf
+build/
+
+# macOS files
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# VS Code
+*.code-workspace
+config.bat
+node_modules
